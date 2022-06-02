@@ -32,7 +32,6 @@ public func customDump<T>(
 ) -> T {
   var target = ""
   let value = customDump(value, to: &target, name: name, indent: indent, maxDepth: maxDepth)
-  print(target)
   return value
 }
 
