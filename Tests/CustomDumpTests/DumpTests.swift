@@ -715,6 +715,211 @@ final class DumpTests: XCTestCase {
     )
   }
 
+  func testSuperclass() {
+    var dump = ""
+    class Human {
+      let name = "John"
+      let email = "john@me.com"
+      let age = 97
+    }
+
+    class Doctor: Human {
+      let field = "Podiatry"
+    }
+
+    customDump(Doctor(), to: &dump)
+
+    XCTAssertNoDifference(
+      dump,
+      """
+      DumpTests.Doctor(
+        name: "John",
+        email: "john@me.com",
+        age: 97,
+        field: "Podiatry"
+      )
+      """
+    )
+  }
+
+  func testLayersOfInheritance() {
+    var dump = ""
+    class Human {
+      let name = "John"
+      let email = "john@me.com"
+      let age = 97
+    }
+
+    class Doctor: Human {
+      let field = "Podiatry"
+    }
+
+    class Surgeon: Doctor {
+      let skillLevel = "Expert"
+    }
+
+    customDump(Surgeon(), to: &dump)
+
+    XCTAssertNoDifference(
+      dump,
+      """
+      DumpTests.Surgeon(
+        name: "John",
+        email: "john@me.com",
+        age: 97,
+        field: "Podiatry",
+        skillLevel: "Expert"
+      )
+      """
+    )
+  }
+
+  func testRecursion() {
+    class Human {
+      let name: String
+
+      init(name: String) {
+        self.name = name
+      }
+    }
+
+    class Child: Human {
+      weak var parent: Parent?
+    }
+
+    class Parent: Human {
+      let children: [Human]
+
+      init(name: String, children: [Child]) {
+        self.children = children
+        super.init(name: name)
+
+        children.forEach {
+          $0.parent = self
+        }
+      }
+    }
+
+    let subject = Parent(
+      name: "Arthur",
+      children: [
+        Child(name: "Virginia"),
+        Child(name: "Ronald"),
+        Child(name: "Fred"),
+        Child(name: "George"),
+        Child(name: "Percy"),
+        Child(name: "Charles"),
+      ])
+
+    var dump = ""
+    customDump(subject, to: &dump)
+
+    XCTAssertNoDifference(
+      dump,
+      """
+      DumpTests.Parent(
+        name: "Arthur",
+        children: [
+          [0]: DumpTests.Child(
+            name: "Virginia",
+            parent: DumpTests.Parent(↩︎)
+          ),
+          [1]: DumpTests.Child#2(
+            name: "Ronald",
+            parent: DumpTests.Parent(↩︎)
+          ),
+          [2]: DumpTests.Child#3(
+            name: "Fred",
+            parent: DumpTests.Parent(↩︎)
+          ),
+          [3]: DumpTests.Child#4(
+            name: "George",
+            parent: DumpTests.Parent(↩︎)
+          ),
+          [4]: DumpTests.Child#5(
+            name: "Percy",
+            parent: DumpTests.Parent(↩︎)
+          ),
+          [5]: DumpTests.Child#6(
+            name: "Charles",
+            parent: DumpTests.Parent(↩︎)
+          )
+        ]
+      )
+      """
+    )
+  }
+
+  func testRepeatition() {
+    class Human {
+      let name = "John"
+    }
+
+    class User: Human {
+      let email = "john@me.com"
+      let age = 97
+
+      let human: Human
+
+      init(human: Human) {
+        self.human = human
+      }
+    }
+
+    let human = Human()
+    let human2 = Human()
+
+    let user = User(human: human)
+    let user2 = User(human: human2)
+
+    var dump = ""
+    customDump(
+      [
+        human,
+        human,
+        human,
+        human2,
+        human2,
+        human2,
+        user,
+        user,
+        user,
+        user2,
+        user2,
+        user2,
+      ], to: &dump)
+
+    XCTAssertNoDifference(
+      dump,
+      """
+      [
+        [0]: DumpTests.Human(name: "John"),
+        [1]: DumpTests.Human(↩︎),
+        [2]: DumpTests.Human(↩︎),
+        [3]: DumpTests.Human#2(name: "John"),
+        [4]: DumpTests.Human#2(↩︎),
+        [5]: DumpTests.Human#2(↩︎),
+        [6]: DumpTests.User(
+          name: "John",
+          email: "john@me.com",
+          age: 97,
+          human: DumpTests.Human(↩︎)
+        ),
+        [7]: DumpTests.User(↩︎),
+        [8]: DumpTests.User(↩︎),
+        [9]: DumpTests.User#2(
+          name: "John",
+          email: "john@me.com",
+          age: 97,
+          human: DumpTests.Human#2(↩︎)
+        ),
+        [10]: DumpTests.User#2(↩︎),
+        [11]: DumpTests.User#2(↩︎)
+      ]
+      """
+    )
+  }
+
   #if canImport(CoreGraphics)
     func testCoreGraphics() {
       var dump = ""
